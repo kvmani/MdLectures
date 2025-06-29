@@ -1,0 +1,33 @@
+name: Build Quarto Slides
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔍 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Install Quarto CLI
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: 🧩 Render all formats
+        uses: quarto-dev/quarto-actions/render@v2
+        with:
+          path: .
+          to: revealjs,beamer,pptx
+
+      - name: 📦 Upload slide artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: slides-artifacts
+          path: |
+            slides/*.html
+            slides/*.pdf
+            slides/*.pptx
