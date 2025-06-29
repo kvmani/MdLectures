@@ -16,6 +16,8 @@ jobs:
 
       - name: 🚀 Install Quarto CLI
         uses: quarto-dev/quarto-actions/setup@v2
+        with:
+            tinytex: true
 
       - name: 🧩 Render all formats
         uses: quarto-dev/quarto-actions/render@v2
