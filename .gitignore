@@ -6,6 +6,10 @@ _env/, venv/, env/  # Python virtual environments
 slides/*.html
 slides/*.pdf
 slides/*.pptx
+
+*/*_files/
+*/*_files/**   # includes generated JS, CSS, assets
+
 _site/
 _build/
 
