@@ -1,0 +1,23 @@
+# — Quarto artifacts
+/.quarto/          # Quarto working directory
+_env/, venv/, env/  # Python virtual environments
+
+# — Render outputs (don't track generated slides or docs)
+slides/*.html
+slides/*.pdf
+slides/*.pptx
+_site/
+_build/
+
+# — OS and editor clutter
+.DS_Store
+Thumbs.db
+*.log
+*.aux
+*.toc
+
+# — IDE-specific files
+.vscode/
+.idea/
+
+/.quarto/

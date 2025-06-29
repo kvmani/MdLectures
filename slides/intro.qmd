@@ -1,0 +1,48 @@
+---
+title: "Hands-on Molecular Dynamics with LAMMPS"
+subtitle: "Lecture 1 – Introduction & Workflow"
+author: "Dr. K V mani Krishna"
+format:
+  revealjs:    # live presentation
+    slide-number: true
+    theme: solarized
+  beamer:      # PDF copy
+    includes-in-header: preamble.tex
+  pptx: default
+
+
+date: "2025-07-05"
+
+---
+
+
+## Slide 1 — Why molecular dynamics?
+
+::: incremental
+- Captures **atomistic trajectories** by integrating $\displaystyle F_i = m_i a_i$  
+- Bridges the gap between first-principles and continuum models  
+- Critical for diffusion, dislocation motion & defect energetics in metallurgy  
+:::
+
+---
+
+## Slide 2 — What is LAMMPS?
+
+- **Large-scale Atomic/Molecular Massively Parallel Simulator**  
+- Written in modern C++; hundreds of interatomic potentials supported  
+- Scales from laptop to supercomputer via MPI/OpenMP/GPU  
+- ![LAMMPS logo](../images/lammps_logo_placeholder.png){#fig:lammps_logo width="60%"}
+
+---
+
+
+
+## Slide 3 — MD integration loop
+
+- Below is a schematic of the MD time-integration loop:
+
+![MD integration loop](../images/md_integration_loop_placeholder.png){#fig:mdloop width="80%"}
+
+> $\Delta t \ll \frac{2\pi}{\omega_{\max}}$
+
+---

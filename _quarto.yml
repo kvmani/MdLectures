@@ -1,0 +1,10 @@
+project:
+  type: default
+
+format:
+  revealjs:
+    theme: solarized
+    slide-number: true
+  beamer:
+    includes-in-header: preamble.tex
+  pptx: default
