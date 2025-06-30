@@ -30,6 +30,7 @@ jobs:
         with:
           name: slides-artifacts
           path: |
-            slides/*.html
-            slides/*.pdf
-            slides/*.pptx
+            _site/slides/*.html
+            _site/slides/*.pdf
+            _site/slides/*.pptx
+          if-no-files-found: warn
