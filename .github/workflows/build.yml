@@ -24,13 +24,14 @@ jobs:
         with:
           path: .
           to: revealjs,beamer,pptx
+          output-dir: docs
 
       - name: 📦 Upload slide artifacts
         uses: actions/upload-artifact@v4
         with:
           name: slides-artifacts
           path: |
-            _site/slides/*.html
-            _site/slides/*.pdf
-            _site/slides/*.pptx
+            docs/slides/*.html
+            docs/slides/*.pdf
+            docs/slides/*.pptx
           if-no-files-found: warn
