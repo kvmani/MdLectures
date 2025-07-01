@@ -19,6 +19,7 @@ Thumbs.db
 *.log
 *.aux
 *.toc
+docs/*
 
 # — IDE-specific files
 .vscode/

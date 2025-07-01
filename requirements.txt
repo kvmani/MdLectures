@@ -4,3 +4,4 @@ tinytex
 # optional for HTML enhancements
 revealjs
 nodejs
+librsvg2-bin

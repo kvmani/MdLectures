@@ -18,7 +18,6 @@ include-code-files:
 - "Day 1: Intro to MD & LAMMPS for Metallurgy"
 - Workshop Instructor, affiliation, date
 
-![](../images/intro_workshop.svg)
 
 ## Slide: Objectives & Agenda
 
@@ -37,7 +36,7 @@ include-code-files:
 - Definition: classical simulation of atoms using Newtonian mechanics
 - Relevance to metallurgy and metals
 
-![](../images/md_scale.svg)
+
 
 ## Slide: Equations of Motion
 
@@ -50,7 +49,7 @@ $$
 - Lennard-Jones vs. EAM usage in metals
 - Emphasize EAM for metallic bonding
 
-![](../images/potential_compare.svg)
+
 
 # Section 3: 1.3 – LAMMPS Basics
 
@@ -62,7 +61,7 @@ $$
 
 - prepare input → run → analyze → visualize
 
-![](../images/lammps_workflow.svg)
+
 
 ## Slide: Anatomy of Input Script
 
@@ -103,7 +102,8 @@ lmp -in in.lj
 
 - Thermo log sample
 
-![](../images/lj_output.svg)
+
+
 
 # Section 5: 1.5 – Visualization with Ovito
 
@@ -113,8 +113,7 @@ lmp -in in.lj
 
 ## Slide: Loading Trajectories
 
-![](../images/ovito_load.svg)
-![](../images/ovito_melt.svg)
+will put ovito images later
 
 ## Slide: Basic Analysis in Ovito
 
