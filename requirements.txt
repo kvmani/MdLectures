@@ -1,0 +1,6 @@
+quarto
+pandoc
+tinytex
+# optional for HTML enhancements
+revealjs
+nodejs
