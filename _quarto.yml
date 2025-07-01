@@ -6,6 +6,10 @@ format:
   revealjs:
     theme: solarized
     slide-number: true
+    self-contained: true
+    monofont: "Courier New"
   beamer:
     includes-in-header: preamble.tex
-  pptx: default
+    monofont: "Courier New"
+  pptx:
+    monofont: "Courier New"
