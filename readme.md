@@ -28,6 +28,7 @@ MdLectures/
 │       └── publish.yml  # (optional) deploys docs/ to GitHub Pages
 └── .gitignore
 
+```
 
 ## 🚀 Quick start
 
@@ -36,18 +37,23 @@ MdLectures/
 git clone https://github.com/kvmani/MdLectures.git
 cd MdLectures
 quarto check
+```
 
 ### Render slides locally
-
+```bash
 quarto render slides/intro.qmd   # HTML → docs/slides/intro.html`
 
+```
 
-###Preview website
+### Preview website
+```bash 
 quarto preview
+```
 
-##Acknowledgements
-*LAMMPS development team at Sandia National Labs and the user community.
+## Acknowledgements
 
-*Quarto open-source authors for the flexible publishing toolchain.
+* LAMMPS development team at Sandia National Labs and the user community.
 
-*GitHub for CI/CD & Pages hosting.
+* Quarto open-source authors for the flexible publishing toolchain.
+
+* GitHub for CI/CD & Pages hosting.
