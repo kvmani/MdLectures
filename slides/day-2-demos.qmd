@@ -1,0 +1,219 @@
+
+---
+title: "Day 2: Parameter Sweeps & Scripting Tricks in LAMMPS"
+author: "Workshop Instructor"
+format:
+  revealjs:
+    slide-number: true
+  beamer:
+    includes-in-header: preamble.tex
+  pptx: default
+---
+
+# Section 2.1 – Problem Statement & V1 Script
+
+## Slide — Fixed‑parameter script (`in.script_V1`)
+
+```lammps
+# in.script_V1 — lattice‑parameter at 300 K, 6×6×6 FCC Al cell
+units           metal
+atom_style      atomic
+boundary        p p p
+lattice         fcc 4.05
+region          box block 0 6 0 6 0 6
+create_box      1 box
+create_atoms    1 box
+
+pair_style      eam
+pair_coeff      * * Al_u3.eam
+
+timestep        0.002
+velocity        all create 300.0 12345
+
+fix             1 all npt temp 300 300 0.1 iso 0 0 1.0
+thermo_style    custom step temp press vol lx
+thermo          500
+run             10000          # 20 ps
+```
+
+**Run command**
+
+```bash
+lmp -in in.script_V1
+```
+
+> **Pro‑tip:** hard‑wiring parameters means four manual edits just to change the temperature!
+
+---
+
+# Section 2.2 – Introducing Variables
+
+## Slide — Script with variables (`in.script_V2`)
+
+```lammps
+# --- user‑defined variables ---
+variable  a0    equal 4.05      # Å
+variable  T     equal 300       # K
+variable  nx    equal 6
+variable  steps equal 10000     # 0.002 ps × 10 000 = 20 ps
+# ------------------------------
+
+units           metal
+atom_style      atomic
+boundary        p p p
+lattice         fcc ${a0}
+region          box block 0 ${nx} 0 ${nx} 0 ${nx}
+create_box      1 box
+create_atoms    1 box
+
+pair_style      eam
+pair_coeff      * * Al_u3.eam
+
+timestep        0.002
+velocity        all create ${T} 12345
+
+fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+thermo_style    custom step temp lx
+thermo          500
+run             ${steps}
+```
+
+**Run with overrides**
+
+```bash
+lmp -var T 500 -var nx 8 -in in.script_V2
+```
+
+> **Pro‑tip:** `-var name value` on the command line lets you sweep parameters without editing the file.
+
+---
+
+# Section 2.3 – Loop over Temperature
+
+## Slide — Temperature sweep (`in.script_V3`)
+
+```lammps
+# temperature list
+variable  Tlist index  200 300 400 500 600
+variable  nx    equal 6
+variable  a0    equal 4.05
+
+label loopT
+variable T equal ${Tlist}
+
+lattice         fcc ${a0}
+region          box block 0 ${nx} 0 ${nx} 0 ${nx}
+create_box      1 box
+create_atoms    1 box
+pair_style      eam
+pair_coeff      * * Al_u3.eam
+timestep        0.002
+velocity        all create ${T} 12345
+fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+
+log             log_T${T}.lammps
+run             10000
+undump          all
+clear
+next Tlist
+jump SELF loopT
+```
+
+**Execution**
+
+```bash
+lmp -in in.script_V3
+```
+
+> **Pro‑tip:** use `clear` before `next` to avoid “system already exists” errors in loops.
+
+---
+
+# Section 2.4 – Self‑describing Filenames
+
+## Slide — String variables (`in.script_V4`)
+
+```lammps
+variable  Tlist index 300 400 500
+variable  nx    equal 6
+variable  a0    equal 4.05
+
+label loopT
+variable T equal ${Tlist}
+
+log    logs/log_T${T}.lammps
+variable dumpfile string dumps/dump_T${T}_N${nx}.lammpstrj
+dump   1 all custom 200 ${dumpfile} id type x y z
+
+# ... simulation setup ...
+run 10000
+undump 1
+clear
+next Tlist
+jump SELF loopT
+```
+
+File names now carry temperature and cell size (`dump_T300_N6.lammpstrj`).
+
+---
+
+# Section 2.5 – Complete Sweep & CSV Output
+
+## Slide — Final script (`in.script_final`)
+
+Key additions: loop over cell sizes and write lattice parameter to CSV.
+
+```lammps
+variable Tlist index 300 400 500
+variable nlist index 4 6 8
+variable a0 equal 4.05
+
+label loopN
+variable nx equal ${nlist}
+
+label loopT
+variable T equal ${Tlist}
+
+# build cell
+lattice fcc ${a0}
+region box block 0 ${nx} 0 ${nx} 0 ${nx}
+create_box 1 box
+create_atoms 1 box
+pair_style eam
+pair_coeff * * Al_u3.eam
+timestep 0.002
+velocity all create ${T} 12345
+fix 1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+
+# lattice parameter output
+variable lat equal lx/${nx}
+fix avg all ave/time 100 1 100 v_lat file results/a_vs_T.csv mode append
+
+run 10000
+unfix avg
+undump all
+clear
+
+next Tlist
+jump SELF loopT
+
+label nextN
+next nlist
+jump SELF loopN
+```
+
+Run all sweeps:
+
+```bash
+lmp -in in.script_final
+```
+
+---
+
+# Section 2.6 – Recap & Preview
+
+- Variables and loops turn a rigid script into a reusable driver.  
+- Self‑describing filenames eliminate confusion during post‑processing.  
+- Next: defect formation energies, dislocation mobility, diffusion studies.
+
+---
