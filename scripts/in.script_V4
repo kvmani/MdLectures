@@ -1,0 +1,60 @@
+# in.script_final — size & temperature sweep, NO if-statements
+
+variable a0     equal 4.05
+variable nx     index 4 6 8                  # outer loop list
+variable steps  equal 2000
+
+# -------- outer loop over nx -----------------------------------------
+label loopNx
+
+	# define temperature list fresh for each nx
+	variable T delete
+	variable T index 300 400 500 600             # inner loop list
+
+	# -------- inner loop over T ------------------------------------------
+	label loopT
+
+		log       logs/log_T${T}_N${nx}.lammps
+		variable  dumpfile string dumps/dump_T${T}_N${nx}.lammpstrj
+
+		units     metal
+		atom_style atomic
+		boundary  p p p
+		lattice   fcc ${a0}
+		region    box block 0 ${nx} 0 ${nx} 0 ${nx}
+		create_box 1 box
+		create_atoms 1 box
+
+		pair_style eam
+		pair_coeff * * Al_jnp.eam
+
+		# minimisation
+		min_style cg
+		minimize 1e-6 1e-8 1000 10000
+
+		# NPT equilibration
+		timestep   0.002
+		velocity   all create ${T} 12345
+		fix        1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+
+		dump       1 all custom 200 ${dumpfile} id type x y z
+		variable   lat equal lx/${nx}
+		fix        avg all ave/time 100 1 100 v_lat append results/a_vs_T.csv
+
+		thermo_style custom step temp press v_lat
+		thermo     500
+		run        ${steps}
+
+		print "RESULT: T=${T} K nx=${nx} a_eq=${lat} Ang dump=${dumpfile}" append results/results.txt screen yes
+
+		undump 1
+		unfix 1
+		unfix avg
+		clear
+
+	next T
+	jump SELF loopT            # go back unless temperature list is finished
+
+# -------- advance cell size ------------------------------------------
+next nx
+jump SELF loopNx            # go back unless nx list is finished

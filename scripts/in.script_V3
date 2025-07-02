@@ -1,0 +1,47 @@
+# in.script_V3 -- Loop over temperature list, per‑T files
+# New features versus V2:
+#  * variable Tlist index ...; loop with next/jump
+#  * self‑describing log/dump filenames containing T
+#  * clear/undump so that loop restarts clean
+#  * still single cell size
+
+variable a0     equal 4.05
+variable nx     string 6
+variable steps  string 2000
+variable Tlist  index 200 300 400 500 600
+
+label loopT
+variable T equal ${Tlist}
+
+log             logs/log_T${T}.lammps
+variable dumpfile string dumps/dump_T${T}_N${nx}.lammpstrj
+
+units           metal
+atom_style      atomic
+boundary        p p p
+lattice         fcc ${a0}
+region          box block 0 ${nx} 0 ${nx} 0 ${nx}
+create_box      1 box
+create_atoms    1 box
+pair_style      eam
+pair_coeff      * * Al_jnp.eam
+
+### for calcualting the lattice parameter
+variable lat equal lx/${nx} 
+
+timestep        0.002
+velocity        all create ${T} 12345
+fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+dump            1 all custom 200 ${dumpfile} id type x y z
+thermo_style    custom step temp lx
+thermo          500
+run             ${steps}
+
+#print "INFO: Completed simulation at T=${T} K, lattice #parameter stored in ${dumpfile}" append yes
+
+print "RESULT: T=${T} K nx=${nx} a_eq=${lat} dump=${dumpfile}" append results/results.txt  screen yes
+
+undump 1
+clear
+next Tlist
+jump SELF loopT

@@ -1,0 +1,35 @@
+# in.script_V2 -- Introduce user variables
+# Changes from V1:
+#  1. a0, T, nx, and steps promoted to variables so they can be overridden
+#     via '-var name value' on the command line.
+#  2. Region size and thermostat now reference these variables.
+#  3. Still single run, single output; no loops yet.
+
+# --- user‑defined variables (default values) ---------------------------------
+variable  a0    equal 4.05      # Å
+variable  T     string 300       # K  (string style so cmd‑line -var overrides)
+variable  nx    string 6
+variable  steps string 10000     # timesteps
+# -----------------------------------------------------------------------------
+
+units           metal
+atom_style      atomic
+boundary        p p p
+
+lattice         fcc ${a0}
+region          box block 0 ${nx} 0 ${nx} 0 ${nx}
+create_box      1 box
+create_atoms    1 box
+
+pair_style      eam
+pair_coeff      * * Al_jnp.eam
+
+timestep        0.002
+velocity        all create ${T} 12345
+
+fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+thermo_style    custom step temp lx
+thermo          500
+run             ${steps}
+
+print "INFO: Completed simulation at T=${T} K for ${steps} steps"

@@ -1,0 +1,27 @@
+# in.script_V1 -- Hard‑wired single‑temperature run
+# Purpose: demonstrate a minimal LAMMPS input that measures lattice parameter
+# at 300 K for a 6×6×6 FCC Al cell.  No variables, no loops.
+
+units           metal
+atom_style      atomic
+boundary        p p p
+
+# --- system definition -------------------------------------------------------
+lattice         fcc 4.05                      # a0 fixed
+region          box block 0 6 0 6 0 6
+create_box      1 box
+create_atoms    1 box
+
+# --- interactions ------------------------------------------------------------
+pair_style      eam
+pair_coeff      * * Al_jnp.eam                # <‑‑ changed to Al_jnp.eam
+
+# --- run setup ---------------------------------------------------------------
+timestep        0.002         # ps
+velocity        all create 300 12345
+fix             1 all npt temp 300 300 0.1 iso 0 0 1.0
+thermo_style    custom step temp lx
+thermo          500
+
+# --- run ---------------------------------------------------------------------
+run 10000       # 20 ps
