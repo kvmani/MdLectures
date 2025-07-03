@@ -46,9 +46,26 @@ quarto render slides/intro.qmd   # HTML → docs/slides/intro.html`
 ```
 
 ### Preview website
-```bash 
+```bash
 quarto preview
 ```
+
+## 🔧 Tools you'll need
+
+- **LAMMPS** – compiled with MPI support for running the example scripts.
+- **OVITO** – for visualising dump files generated during demos.
+- **Python 3** – used for small utilities and compatible with Quarto.
+- **Git** – clone this repository and track your own input scripts.
+- **Quarto** – to render the slides to HTML, PDF or PPTX formats.
+
+## 📚 How to follow the lecture series
+
+1. Clone the repository and install the tools listed above.
+2. Run `quarto render slides/day1_intro.qmd` to generate the first lecture in your preferred format.
+3. Explore the `scripts/` folder and run the accompanying LAMMPS inputs, e.g. `lmp -in scripts/in.lj`.
+4. Visualise the output dumps using Ovito to reinforce concepts covered in the slides.
+5. Proceed through each `slides/*.qmd` file in numerical order—each corresponds to a workshop day.
+
 
 ## Acknowledgements
 
