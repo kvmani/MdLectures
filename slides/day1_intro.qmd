@@ -1,6 +1,7 @@
 ---
-title: "Day 1: Intro to MD & LAMMPS for Metallurgy"
-author: "Workshop Instructor"
+title: "Molecular Dynamics with LAMMPS – Day 1"
+author: "KV Mani Krishna"
+date: 2025-07-02
 format:
   revealjs:
     slide-number: true
@@ -11,124 +12,122 @@ include-code-files:
   - ../scripts/in.lj
 ---
 
-# Section 1: 1.1 – Welcome & Workshop Overview
+## 1 · What is Molecular Dynamics? 🧬
+- Simulates the time evolution of **N** interacting particles by integrating Newton’s equations (F = ma).
+- Forces come from an interatomic **potential/force-field** that sets the simulation’s fidelity.
+- Reaches picoseconds → microseconds and nanometres → microns on modern hardware.
+![MD then vs now](../images/md_history_vs_today.png)
 
-## Slide: Title
+**Take-away** MD is a digital time-lapse microscope for atoms.
 
-- "Day 1: Intro to MD & LAMMPS for Metallurgy"
-- Workshop Instructor, affiliation, date
+---
 
+## 2 · The MD Algorithm at a Glance ⚙️
+- **Velocity-Verlet loop**: ½-kick → drift → (re)build neighbours → forces → ½-kick.
+- **Neighbour lists + domain decomposition** keep force evaluation O(N).
+- Typical timestep ≈ 1 fs; millions of steps deliver nanosecond trajectories.
 
-## Slide: Objectives & Agenda
+**Pro-tip** Let physics—not code—set the timestep.
 
-- Goals: grasp MD fundamentals, explore LAMMPS structure, run first demo
-- Agenda:
-  - short theory primer
-  - demo overview
-  - live LJ run
-  - Ovito intro
-  - Q&A
+---
 
-# Section 2: 1.2 – Molecular Dynamics Fundamentals
+## 3 · Problems MD Can Tackle 🛠️
+- Point & line defects: vacancies, dislocations, radiation damage.
+- Phase transitions: melting, solidification, diffusion-driven growth.
+- Mechanical & thermal properties: elastic moduli, crack propagation, conductivity.
 
-## Slide: What is MD?
+**Key takeaway** If atoms move or rearrange ≤ µm & ≤ µs, MD can probably watch it.
 
-- Definition: classical simulation of atoms using Newtonian mechanics
-- Relevance to metallurgy and metals
+---
 
+## 4 · LAMMPS Philosophy & Structure 🏗️
+- Open-source C++ with modular **styles** (pair, fix, compute, …) for plug-in physics.
+- Continuous-release; extra packages can load at runtime as shared libs.
+- Scales from laptops to exascale GPUs via domain decomposition + MPI.
+- Usable standalone or as a callable library/Python module.
+![Lammps Logo](../images/lammps_logo_placeholder.png)
 
+**Take-away** LAMMPS is Lego® for materials simulation.
 
-## Slide: Equations of Motion
+---
 
-$$
-\frac{d\mathbf{r}_i}{dt} = \mathbf{v}_i,\quad m_i\frac{d\mathbf{v}_i}{dt} = \mathbf{F}_i = -\nabla_i V(\{\mathbf{r}_j\})
-$$
+## 5 · LAMMPS Scripting 101 ✍️
+- Plain-text scripts; supports variables, math, loops, conditionals, shell cmds.
+- Flow: `units` → build atoms → potentials → `fix`es → `run` → output.
+- 1000+ commands; docs & ~35 example folders live at lammps.org.
 
-## Slide: Interatomic Potentials
+**Pro-tip** Treat every *.in* file like code—version-control and iterate.
 
-- Lennard-Jones vs. EAM usage in metals
-- Emphasize EAM for metallic bonding
+---
 
+## 6 · Anatomy of a LAMMPS Input 🩺
+- **Setup**: `units`, `dimension`, `boundary`, `atom_style`, `neighbor`.
+- **Geometry**: `lattice`, `region`, `create_box|read_data`, `create_atoms`.
+- **Interactions & groups**: `pair_style`, `pair_coeff`, `group`, `region`.
+- **Dynamics**: `mass`, `velocity`, `fix nve/nvt/npt`, thermostats/constraints.
+- **Output & run**: `timestep`, `thermo`, `dump`, `run`, `write_restart`.
 
+**Take-away** Five sections, infinite possibilities.
 
-# Section 3: 1.3 – LAMMPS Basics
+---
 
-## Slide: What is LAMMPS?
+## 7 · Example – LJ Melting 🔥
+```lmp
+# in.lj_melt — LJ solid → liquid
+units           lj
+dimension       3
+boundary        p p p
+atom_style      atomic
 
-- Parallel MD code for materials simulation :contentReference[oaicite:1]{index=1}
+lattice         fcc 0.8442
+region          box block 0 10 0 10 0 10
+create_box      1 box
+create_atoms    1 box
+mass 1 1.0
 
-## Slide: LAMMPS Workflow
+pair_style      lj/cut 2.5
+pair_coeff      1 1 1.0 1.0 2.5
 
-- prepare input → run → analyze → visualize
+velocity        all create 0.3 87287
+fix             1 all nve
+thermo          100
+thermo_style    custom step temp pe etotal press
 
-
-
-## Slide: Anatomy of Input Script
-
-```bash
-# in.lj – Lennard-Jones demo
-units lj
-atom_style atomic
-lattice fcc 0.8442
-region box block 0 10 0 10 0 10
-create_box 1 box
-create_atoms 1 box
-pair_style lj/cut 2.5
-pair_coeff 1 1 1.0 1.0 2.5
-fix 1 all nve
-run 10000
+dump            1 all atom 200 dump.lj
+timestep        0.005
+run             20000
 ```
 
-# Section 4: 1.4 – Live Demo: LJ Melt in LAMMPS
+---
 
-## Slide: Setup & Goals
+## 8 · Advanced Example: Lattice a(T) – V1→V4 📈
 
-- LJ melt demo: simulate FCC melt, compute thermodynamic properties
-
-## Slide: Input Script Overview
-
-```yaml
-include-code-files:
-  - ../scripts/in.lj
+### V1 – single-T NPT & print
+```lmp
+variable T equal 300
+fix 1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+variable a equal lx/10
+thermo_style custom step temp v_a
 ```
 
-## Slide: Run Commands
-
-```bash
-lmp -in in.lj
+### V2 – temperature loop
+```lmp
+variable T loop 300 600 900 1200
+label loopT
+  fix 1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
+  run 20000
+  print "${T} $(v_a)" append latparam.dat
+  unfix 1
+next T
+jump SELF loopT
 ```
 
-## Slide: Expected Output
+### V3 – on-the-fly compute
+```lmp
+compute lat all reduce ave c_myCell[1]
+variable a equal c_lat/10
+fix 2 all ave/time 100 10 1000 v_a file lat_vs_t.dat
+```
 
-- Thermo log sample
-
-
-
-
-# Section 5: 1.5 – Visualization with Ovito
-
-## Slide: Why Ovito?
-
-- Supports LAMMPS dumps :contentReference[oaicite:2]{index=2}
-
-## Slide: Loading Trajectories
-
-will put ovito images later
-
-## Slide: Basic Analysis in Ovito
-
-- Displacement plots
-- Coloring atoms by type or energy
-
-# Section 6: 1.6 – Q&A & Day 2 Preview
-
-## Slide: Recap
-
-- MD basics, LJ demo, Ovito intro
-
-## Slide: Day 2 Teaser
-
-- crystal defects
-- dislocations
-- diffusion
+**Take-away** Evolve scripts incrementally—variables & loops unlock automation.
 
