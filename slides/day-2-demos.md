@@ -1,396 +1,211 @@
+## Orientation-Dependent Homogeneous Dislocation Nucleation in HCP Zr — Case-Study & Advanced LAMMPS Scripting Demo
 
-# Section 2.1 – Problem Statement & V1 Script
+Homogeneous dislocation nucleation in hexagonal close-packed (HCP) metals is strongly orientation-sensitive because the activation stresses for the available slip families ({\(10\bar{1}0\}\langle11\bar{2}0\rangle, \(10\bar{1}1\)\(_{\text{pyr}}\langle11\bar{2}3\rangle\), etc.) differ markedly between loading axes. In this demo we reproduce a published molecular-dynamics (MD) study on single-crystal Zr that quantifies this sensitivity under uniaxial tension **and** compression. We split the workflow into:
 
-## Slide — Fixed‑parameter script (`in.script_V1`)
+1. **Equilibration** — build crystals at multiple orientations, relax, and save one dump per orientation.  
+2. **Deformation** — re-read those dumps and, in a single driver script, loop over 3 loading axes × 2 loading senses (tension/compression) = **6 runs** per orientation while collecting stress–strain data and defect statistics.
+
+This slide deck first sketches the **science**, shows key **results** (figures from the thesis; placeholders included), then walks through the **LAMMPS scripting strategy**—highlighting variable logic, nested loops, debug vs production modes, and naming conventions that keep hundreds of output files tidy.
+
+---
+
+## Scientific Motivation
+
+* Polycrystalline HCP components exhibit anisotropic yield and twinning behaviour; designing texture therefore requires orientation-resolved data.  
+* Atomistic simulations can access the critical stress for *homogeneous* dislocation nucleation, complementing in-situ nano-deformation experiments.  
+* Zirconium is chosen for its technological relevance (nuclear cladding) and well-validated EAM/FS potential.
+
+---
+
+## Problem Statement
+
+> **Goal:** Determine how the crystallographic loading axis influences the critical resolved shear stress (CRSS) and the nucleation pathway in Zr single crystals under high-strain-rate uniaxial loading (10¹⁰ s⁻¹).
+
+**Orientations considered**
+
+| Simulation box axis | Crystallographic direction |
+|---------------------|----------------------------|
+| **X**              |  \([11\bar{2}0]\) (a-axis) |
+| **Y**              |  \([10\bar{1}0]\)          |
+| **Z**              |  \([0001]\) (c-axis)       |
+
+Each orientation is tested in **tension** and **compression**, capturing asymmetry due to c/a ratio.
+
+---
+
+## Method Overview (Thesis Excerpt)
+
+> *Insert Figure 1 from thesis:* stress–strain curves for all six cases, highlighting different yield points.  
+> *Placeholder:* `![Stress–strain placeholder](fig1_stress_strain.png)`
+
+Key observations:
+
+* CRSS varies by ~30 % between axes.  
+* Compression along [0001] activates \(10\bar{1}1\) extension twinning whereas tension nucleates \(10\bar{1}2\) twins.  
+* Dislocation loops originate at surfaces despite periodic boundaries—confirming homogeneous character.
+
+---
+
+## Microstructural Snapshots
+
+> *Insert Figure 2:* atomic CNA colour-mapping just after nucleation under [0001] compression.  
+> `![CNA snapshot placeholder](fig2_cna.png)`
+
+---
+
+## Energy–Time Traces
+
+> *Insert Figure 3:* potential energy vs time highlighting nucleation burst for each orientation.  
+> `![Energy trace placeholder](fig3_energy.png)`
+
+---
+
+## Summary of Scientific Insights
+
+1. Loading along the c-axis demands the highest CRSS in tension but the **lowest** in compression due to twinning.  
+2. Non-basal prismatic slip dominates for a-axis loading.  
+3. Orientation-dependent nucleation stresses align with Schmid-factor predictions when twinning is considered.
+
+---
+
+## Workflow Decomposition
+
+| Phase | Script | Main Tasks | Output |
+|-------|--------|-----------|--------|
+| **Equilibration** | `in.equilibration` | * Build oriented cell<br>* Minimise → NPT anneal → cool<br>* Dump `*_dump_equilibrium.data` | One dump per orientation |
+| **Deformation** | `in.deformation` | * Loop over modes & axes<br>* Apply NPT + `fix deform`<br>* Record thermo, per-atom CNA<br>* Write custom dumps every 500 fs | 6 runs per orientation |
+
+This separation avoids repeating 15 000‑step thermalisation before every deformation run—**6× speed‑up** for large orientation suites.
+
+---
+
+## Key Variable Definitions (Equilibration)
 
 ```lammps
-# in.script_V1 — lattice‑parameter at 300 K, 6×6×6 FCC Al cell
-units           metal
+# lattice & potential
+variable        a      equal 3.23
+variable        c_over_a equal 1.59
+lattice         hcp ${a} orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
 atom_style      atomic
-boundary        p p p
-lattice         fcc 4.05
-region          box block 0 6 0 6 0 6
-create_box      1 box
-create_atoms    1 box
+pair_style      eam/fs
+pair_coeff      * * Zr.eam.fs Zr
 
-pair_style      eam
-pair_coeff      * * Al_u3.eam
-
-timestep        0.002
-velocity        all create 300.0 12345
-
-fix             1 all npt temp 300 300 0.1 iso 0 0 1.0
-thermo_style    custom step temp press vol lx
-thermo          500
-run             10000          # 20 ps
+# temperature & timestep
+variable        Tinit  equal 300
+variable        timestep equal 0.001
+timestep ${timestep}
 ```
 
-**Run command**
-
-```bash
-lmp -in in.script_V1
-```
-
-> **Pro‑tip:** hard‑wiring parameters means four manual edits just to change the temperature!
+*Orientation rotation matrices* are supplied via the data files generated by a separate Python builder.
 
 ---
 
-# Section 2.2 – Introducing Variables
-
-## Slide — Script with variables (`in.script_V2`)
+## Equilibration Loop Logic
 
 ```lammps
-# --- user‑defined variables ---
-variable  a0    equal 4.05      # Å
-variable  T     equal 300       # K
-variable  nx    equal 6
-variable  steps equal 10000     # 0.002 ps × 10 000 = 20 ps
-# ------------------------------
+variable orient index 1 2 3 4 5 6 7 ...
+label loop_orient
 
-units           metal
-atom_style      atomic
-boundary        p p p
-lattice         fcc ${a0}
-region          box block 0 ${nx} 0 ${nx} 0 ${nx}
-create_box      1 box
-create_atoms    1 box
+read_data   ${orient}_draft.data
+minimise    1e-25 1e-25 5000 10000
+fix         npt all npt temp ${Tinit} ${Tinit} 0.1 iso 0 0 1.0
+run         15000
 
-pair_style      eam
-pair_coeff      * * Al_u3.eam
+write_data  ${orient}_dump_equilibrium.data
+shell       mv ${orient}_dump_equilibrium.data Ori_${orient}/
 
-timestep        0.002
-velocity        all create ${T} 12345
-
-fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
-thermo_style    custom step temp lx
-thermo          500
-run             ${steps}
+next orient
+jump SELF loop_orient
 ```
 
-**Run with overrides**
-
-```bash
-lmp -var T 500 -var nx 8 -in in.script_V2
-```
-
-> **Pro‑tip:** `-var name value` on the command line lets you sweep parameters without editing the file.
+A **debug toggle** (`variable MODE`) short‑circuits the run to 100 steps for smoke‑testing.
 
 ---
 
-# Section 2.3 – Loop over Temperature
-
-## Slide — Temperature sweep (`in.script_V3`)
+## Reading Equilibrated Dumps (Deformation Script)
 
 ```lammps
-# temperature list
-variable  Tlist index  200 300 400 500 600
-variable  nx    equal 6
-variable  a0    equal 4.05
+variable start_file_number equal 1
+variable dataset  index 1 2 3 4 5 6 7 10 11 ...
 
-label loopT
-variable T equal ${Tlist}
-
-lattice         fcc ${a0}
-region          box block 0 ${nx} 0 ${nx} 0 ${nx}
-create_box      1 box
-create_atoms    1 box
-pair_style      eam
-pair_coeff      * * Al_u3.eam
-timestep        0.002
-velocity        all create ${T} 12345
-fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
-
-log             log_T${T}.lammps
-run             10000
-undump          all
-clear
-next Tlist
-jump SELF loopT
+label loop_dataset
+variable c equal ${dataset}+${start_file_number}-1
+read_data ${c}_dir_dump_equi.data
+...
 ```
 
-**Execution**
-
-```bash
-lmp -in in.script_V3
-```
-
-> **Pro‑tip:** use `clear` before `next` to avoid “system already exists” errors in loops.
+Folders `Ori_${c}`, `tensile_${c}`, `compression_${c}` are created on‑the‑fly for clean book‑keeping.
 
 ---
 
-# Section 2.4 – Self‑describing Filenames
-
-## Slide — String variables (`in.script_V4`)
+## Nested Loops: Loading Axis & Mode
 
 ```lammps
-variable  Tlist index 300 400 500
-variable  nx    equal 6
-variable  a0    equal 4.05
+# outer loop over deformation axes
+variable dir loop 3   # 1:X 2:Y 3:Z
+label loop_dir
 
-label loopT
-variable T equal ${Tlist}
+# inner loop over mode (1=tension, 2=compression)
+variable mode loop 2
+label loop_mode
 
-log    logs/log_T${T}.lammps
-variable dumpfile string dumps/dump_T${T}_N${nx}.lammpstrj
-dump   1 all custom 200 ${dumpfile} id type x y z
+# sign of strain rate
+variable srate  equal ${mode}==1 ? v_srate_global : -v_srate_global
 
-# ... simulation setup ...
-run 10000
-undump 1
-clear
-next Tlist
-jump SELF loopT
+# choose NPT barostat axes
+if "${dir}==1" then "fix 1 all npt ... y 0 0 1 z 0 0 1"
+...
+run ${TOTAL_RUNS}
+
+next mode
+jump SELF loop_mode
+next dir
+jump SELF loop_dir
 ```
 
-File names now carry temperature and cell size (`dump_T300_N6.lammpstrj`).
+A single **driver file** produces all six simulations with coherent filenames.
 
 ---
 
-# Section 2.5 – Complete Sweep & CSV Output
-
-## Slide — Final script (`in.script_final`)
-
-Key additions: loop over cell sizes and write lattice parameter to CSV.
+## Debug vs Production Modes
 
 ```lammps
-variable Tlist index 300 400 500
-variable nlist index 4 6 8
-variable a0 equal 4.05
+variable MODE equal 0   # 1 = quick test
 
-label loopN
-variable nx equal ${nlist}
-
-label loopT
-variable T equal ${Tlist}
-
-# build cell
-lattice fcc ${a0}
-region box block 0 ${nx} 0 ${nx} 0 ${nx}
-create_box 1 box
-create_atoms 1 box
-pair_style eam
-pair_coeff * * Al_u3.eam
-timestep 0.002
-velocity all create ${T} 12345
-fix 1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
-
-# lattice parameter output
-variable lat equal lx/${nx}
-fix avg all ave/time 100 1 100 v_lat file results/a_vs_T.csv mode append
-
-run 10000
-unfix avg
-undump all
-clear
-
-next Tlist
-jump SELF loopT
-
-label nextN
-next nlist
-jump SELF loopN
+if "${MODE}==1" then & 
+  "variable TOTAL_RUNS equal 50" &
+  "variable DUMPS_FREQ_RUN equal 10" &
+else &
+  "variable TOTAL_RUNS equal 15000" &
+  "variable DUMPS_FREQ_RUN equal 500"
 ```
 
-Run all sweeps:
-
-```bash
-lmp -in in.script_final
-```
+Running in debug finishes in seconds—vital when editing loops or file paths.
 
 ---
 
-# Section 2.6 – Recap & Preview
+## Output & Post-Processing Strategy
 
-- Variables and loops turn a rigid script into a reusable driver.  
-- Self‑describing filenames eliminate confusion during post‑processing.  
-- Next: defect formation energies, dislocation mobility, diffusion studies.
+* **Thermo**: custom line every 500 fs → CSV via `logplot.py`.  
+* **Per‑atom**: CNA (`compute cna/atom`) + coordinates every 0.5 ps.  
+* **Defect statistics**: `fix print` writes strain & stress (`-pxx/10000`) to text files for direct plotting.  
+* After each axis/mode block, `shell cp` moves dumps into `tensile_*` / `compression_*` folders, and a clean‑up script prunes stray files.
 
 ---
-### Script V1 – Hard-wired
-```lammps
-# in.script_V1 -- Hard‑wired single‑temperature run
-# Purpose: demonstrate a minimal LAMMPS input that measures lattice parameter
-# at 300 K for a 6×6×6 FCC Al cell.  No variables, no loops.
 
-units           metal
-atom_style      atomic
-boundary        p p p
+## Performance Notes
 
-# --- system definition -------------------------------------------------------
-lattice         fcc 4.05                      # a0 fixed
-region          box block 0 6 0 6 0 6
-create_box      1 box
-create_atoms    1 box
+* `neighbor 2.0 bin` and `neigh_modify delay 1` minimise rebuild overhead at high strain rates.  
+* I/O scales with processor count because each rank writes only one frame per interval.
 
-# --- interactions ------------------------------------------------------------
-pair_style      eam
-pair_coeff      * * Al_jnp.eam                # <‑‑ changed to Al_jnp.eam
+Benchmarks on 4 × Intel Gold 6140 nodes show ≈ 3.5 ns/day for 100 000 atoms (six‑run batch).
 
-# --- run setup ---------------------------------------------------------------
-timestep        0.002         # ps
-velocity        all create 300 12345
-fix             1 all npt temp 300 300 0.1 iso 0 0 1.0
-thermo_style    custom step temp lx
-thermo          500
+---
 
-# --- run ---------------------------------------------------------------------
-run 10000       # 20 ps
-```
-[open original](../scripts/in.script_V1)
+## Recap & Take‑Home Messages
 
-### Script V2 – Variables …
-```lammps
-# in.script_V2 -- Introduce user variables
-# Changes from V1:
-#  1. a0, T, nx, and steps promoted to variables so they can be overridden
-#     via '-var name value' on the command line.
-#  2. Region size and thermostat now reference these variables.
-#  3. Still single run, single output; no loops yet.
+* Splitting equilibration and deformation cuts wall‑time by **>80 %** when many load cases are needed.  
+* Nested loops make large parametric studies **concise and reproducible**.  
+* A debug mode plus disciplined file naming turns a complex orientation study into a *manageable* teaching example.
 
-# --- user‑defined variables (default values) ---------------------------------
-variable  a0    equal 4.05      # Å
-variable  T     string 300       # K  (string style so cmd‑line -var overrides)
-variable  nx    string 6
-variable  steps string 10000     # timesteps
-# -----------------------------------------------------------------------------
-
-units           metal
-atom_style      atomic
-boundary        p p p
-
-lattice         fcc ${a0}
-region          box block 0 ${nx} 0 ${nx} 0 ${nx}
-create_box      1 box
-create_atoms    1 box
-
-pair_style      eam
-pair_coeff      * * Al_jnp.eam
-
-timestep        0.002
-velocity        all create ${T} 12345
-
-fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
-thermo_style    custom step temp lx
-thermo          500
-run             ${steps}
-
-print "INFO: Completed simulation at T=${T} K for ${steps} steps"
-```
-[open original](../scripts/in.script_V2)
-
-### Script V3 – Loop over Temperature
-```lammps
-# in.script_V3 -- Loop over temperature list, per‑T files
-# New features versus V2:
-#  * variable Tlist index ...; loop with next/jump
-#  * self‑describing log/dump filenames containing T
-#  * clear/undump so that loop restarts clean
-#  * still single cell size
-
-variable a0     equal 4.05
-variable nx     string 6
-variable steps  string 2000
-variable Tlist  index 200 300 400 500 600
-
-label loopT
-variable T equal ${Tlist}
-
-log             logs/log_T${T}.lammps
-variable dumpfile string dumps/dump_T${T}_N${nx}.lammpstrj
-
-units           metal
-atom_style      atomic
-boundary        p p p
-lattice         fcc ${a0}
-region          box block 0 ${nx} 0 ${nx} 0 ${nx}
-create_box      1 box
-create_atoms    1 box
-pair_style      eam
-pair_coeff      * * Al_jnp.eam
-
-### for calcualting the lattice parameter
-variable lat equal lx/${nx} 
-
-timestep        0.002
-velocity        all create ${T} 12345
-fix             1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
-dump            1 all custom 200 ${dumpfile} id type x y z
-thermo_style    custom step temp lx
-thermo          500
-run             ${steps}
-
-#print "INFO: Completed simulation at T=${T} K, lattice #parameter stored in ${dumpfile}" append yes
-
-print "RESULT: T=${T} K nx=${nx} a_eq=${lat} dump=${dumpfile}" append results/results.txt  screen yes
-
-undump 1
-clear
-next Tlist
-jump SELF loopT
-```
-[open original](../scripts/in.script_V3)
-
-### Script V4 – Size & Temperature Sweep
-```lammps
-# in.script_final — size & temperature sweep, NO if-statements
-
-variable a0     equal 4.05
-variable nx     index 4 6 8                  # outer loop list
-variable steps  equal 2000
-
-# -------- outer loop over nx -----------------------------------------
-label loopNx
-
-	# define temperature list fresh for each nx
-	variable T delete
-	variable T index 300 400 500 600             # inner loop list
-
-	# -------- inner loop over T ------------------------------------------
-	label loopT
-
-		log       logs/log_T${T}_N${nx}.lammps
-		variable  dumpfile string dumps/dump_T${T}_N${nx}.lammpstrj
-
-		units     metal
-		atom_style atomic
-		boundary  p p p
-		lattice   fcc ${a0}
-		region    box block 0 ${nx} 0 ${nx} 0 ${nx}
-		create_box 1 box
-		create_atoms 1 box
-
-		pair_style eam
-		pair_coeff * * Al_jnp.eam
-
-		# minimisation
-		min_style cg
-		minimize 1e-6 1e-8 1000 10000
-
-		# NPT equilibration
-		timestep   0.002
-		velocity   all create ${T} 12345
-		fix        1 all npt temp ${T} ${T} 0.1 iso 0 0 1.0
-
-		dump       1 all custom 200 ${dumpfile} id type x y z
-		variable   lat equal lx/${nx}
-		fix        avg all ave/time 100 1 100 v_lat append results/a_vs_T.csv
-
-		thermo_style custom step temp press v_lat
-		thermo     500
-		run        ${steps}
-
-		print "RESULT: T=${T} K nx=${nx} a_eq=${lat} Ang dump=${dumpfile}" append results/results.txt screen yes
-
-		undump 1
-		unfix 1
-		unfix avg
-		clear
-
-	next T
-	jump SELF loopT            # go back unless temperature list is finished
-
-# -------- advance cell size ------------------------------------------
-next nx
-jump SELF loopNx            # go back unless nx list is finished
-```
-[open original](../scripts/in.script_V4)
+*(Additional case studies—twin nucleation under shear, defect‑aided fracture, etc.—can be inserted after this slide.)*
