@@ -15,6 +15,7 @@ This slide deck first sketches the **science**, shows key **results** (figures f
 * Atomistic simulations can access the critical stress for *homogeneous* dislocation nucleation, complementing in-situ nano-deformation experiments.  
 * Zirconium is chosen for its technological relevance (nuclear cladding) and well-validated EAM/FS potential.
 
+![Animated tensile direction dependent deformation](images/tensile_15_14_300K.gif)
 ---
 
 ## Problem Statement

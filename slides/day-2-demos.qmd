@@ -1,6 +1,6 @@
 ---
 title: "Orientation-Dependent Homogeneous Dislocation Nucleation in HCP Zr"
-author: "Workshop Instructor"
+author: "Dr K V Mani Krishna"
 format:
   revealjs:
     slide-number: true
@@ -11,12 +11,56 @@ format:
 
 ## Orientation-Dependent Homogeneous Dislocation Nucleation in HCP Zr — Case-Study & Advanced LAMMPS Scripting Demo
 
-Homogeneous dislocation nucleation in hexagonal close-packed (HCP) metals is strongly orientation-sensitive because the activation stresses for the available slip families ($\{10\bar{1}0\}\langle11\bar{2}0\rangle$, $10\bar{1}1_{\text{pyr}}\langle11\bar{2}3\rangle$, etc.) differ markedly between loading axes. In this demo we reproduce a published molecular-dynamics (MD) study on single-crystal Zr that quantifies this sensitivity under uniaxial tension **and** compression. We split the workflow into:
+## Orientation-Sensitive deformation in HCP Metals
 
-1. **Equilibration** — build crystals at multiple orientations, relax, and save one dump per orientation.  
-2. **Deformation** — re-read those dumps and, in a single driver script, loop over 3 loading axes × 2 loading senses (tension/compression) = **6 runs** per orientation while collecting stress–strain data and defect statistics.
+- Homogeneous dislocation nucleation in **hexagonal close-packed (HCP)** metals is highly **orientation-sensitive**.
+- Reason: **Activation stresses** vary significantly among available slip systems:
+  - $\{10\bar{1}0\}\langle11\bar{2}0\rangle$ (basal)
+  - $\{10\bar{1}1\}_{\text{pyr}}\langle11\bar{2}3\rangle$ (pyramidal)
+  - etc.
+- Loading direction strongly affects which slip systems activate.
 
-This slide deck first sketches the **science**, shows key **results** (figures from the thesis; placeholders included), then walks through the **LAMMPS scripting strategy**—highlighting variable logic, nested loops, debug vs production modes, and naming conventions that keep hundreds of output files tidy.
+---
+
+## What This Demo Reproduces
+
+- A published **molecular dynamics (MD)** study on single-crystal **zirconium (Zr)**. [View my full PhD thesis here](http://www.hbni.ac.in/phdthesis/engg/ENGG01200904017.pdf))
+- Part of the study investigates orientation dependence of slip under:
+  - **Uniaxial tension**
+  - **Uniaxial compression**
+- Quantitative analysis of:
+  - Stress–strain behavior
+  - Defect nucleation and evolution
+
+
+---
+
+## Slide Deck Flow
+
+- Overview of **scientific context**
+- Summary of **key results**
+  - Directly from thesis (figures or placeholders shown)
+- Breakdown of **LAMMPS scripting strategy**
+  - Use of variables and `loop` logic
+  - Toggle between **debug** and **production** modes
+  - Output
+
+
+---
+## Workflow Structure
+
+1. **Equilibration Phase**
+   - Build crystals at multiple orientations
+   - Relax structures
+   - Save one dump file per orientation
+
+2. **Deformation Phase**
+   - Load the equilibrated dumps
+   - For each orientation:
+     - Apply 3 loading directions × 2 senses = **6 deformation runs**
+     - Collect:
+       - Stress–strain data
+       - Dislocation statistics (via DXA or CNA)
 
 ---
 
@@ -32,7 +76,7 @@ This slide deck first sketches the **science**, shows key **results** (figures f
 
 > **Goal:** Determine how the crystallographic loading axis influences the critical resolved shear stress (CRSS) and the nucleation pathway in Zr single crystals under high-strain-rate uniaxial loading ($10^{10}$ s$^{-1}$).
 
-**Orientations considered**
+**Example Orientation considered**
 
 | Simulation box axis | Crystallographic direction |
 |---------------------|----------------------------|
@@ -53,7 +97,7 @@ Key observations:
 
 * CRSS varies by ~30 % between axes.  
 * Compression along [0001] activates $10\bar{1}1$ extension twinning whereas tension nucleates $10\bar{1}2$ twins.
-* Dislocation loops originate at surfaces despite periodic boundaries—confirming homogeneous character.
+
 
 ---
 
@@ -61,13 +105,6 @@ Key observations:
 
 > *Insert Figure 2:* atomic CNA colour-mapping just after nucleation under [0001] compression.  
 > `![CNA snapshot placeholder](fig2_cna.png)`
-
----
-
-## Energy–Time Traces
-
-> *Insert Figure 3:* potential energy vs time highlighting nucleation burst for each orientation.  
-> `![Energy trace placeholder](fig3_energy.png)`
 
 ---
 

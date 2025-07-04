@@ -4,7 +4,7 @@ author: "KV Mani Krishna"
 date: 2025-07-02
 ---
 
-## 1 · What is Molecular Dynamics? 🧬
+## What is Molecular Dynamics? 🧬
 - Simulates the time evolution of **N** interacting particles by integrating Newton’s equations (F = ma).  
 - Forces come from an interatomic **potential/force-field** that sets the simulation’s fidelity.  
 - Reaches picoseconds → microseconds and nanometres → microns on modern hardware.
@@ -14,7 +14,7 @@ date: 2025-07-02
 
 ---
 
-## 2 · The MD Algorithm at a Glance ⚙️
+## The MD Algorithm at a Glance ⚙️
 - **Velocity-Verlet loop**: ½-kick → drift → (re)build neighbours → forces → ½-kick.
 - **Neighbour lists + domain decomposition** keep force evaluation O(N).
 - Typical timestep ≈ 1 fs; millions of steps deliver nanosecond trajectories.
@@ -23,7 +23,7 @@ date: 2025-07-02
 
 ---
 
-## 3 · Problems MD Can Tackle 🛠️
+## Problems MD Can Tackle 🛠️
 - Point & line defects: vacancies, dislocations, radiation damage.
 - Phase transitions: melting, solidification, diffusion-driven growth.
 - Mechanical & thermal properties: elastic moduli, crack propagation, conductivity.
@@ -32,7 +32,7 @@ date: 2025-07-02
 
 ---
 
-## 4 · LAMMPS Philosophy & Structure 🏗️
+## LAMMPS Philosophy & Structure 🏗️
 - Open-source C++ with modular **styles** (pair, fix, compute, …) for plug-in physics.
 - Continuous-release; extra packages can load at runtime as shared libs.
 - Scales from laptops to exascale GPUs via domain decomposition + MPI.
@@ -45,7 +45,7 @@ date: 2025-07-02
 
 ---
 
-## 5 · LAMMPS Scripting 101 ✍️
+## LAMMPS Scripting 101 ✍️
 - Plain-text scripts; supports variables, math, loops, conditionals, shell cmds.
 - Flow: `units` → build atoms → potentials → `fix`es → `run` → output.
 - 1000+ commands; docs & ~35 example folders live at lammps.org.
@@ -54,7 +54,7 @@ date: 2025-07-02
 
 ---
 
-## 6 · Anatomy of a LAMMPS Input 🩺
+## Anatomy of a LAMMPS Input 🩺
 - **Setup**: `units`, `dimension`, `boundary`, `atom_style`, `neighbor`.
 - **Geometry**: `lattice`, `region`, `create_box|read_data`, `create_atoms`.
 - **Interactions & groups**: `pair_style`, `pair_coeff`, `group`, `region`.
@@ -65,7 +65,56 @@ date: 2025-07-02
 
 ---
 
-## 7 · Example – LJ Melting 🔥
+---
+
+## Atom Styles & Potentials in LAMMPS  
+.key-takeaway[
+LAMMPS provides flexible `atom_style` options to match the physics of your system, and a wide range of interatomic potentials suited for metals, semiconductors, and molecules.
+]
+
+- The `atom_style` determines what per-atom properties are stored (e.g., charge, bonds, spin).
+- The `pair_style` defines how atoms interact — ranging from simple to complex potentials.
+- Matching the correct pair of `atom_style` and `pair_style` is crucial for meaningful simulations.
+
+---
+
+## Common `atom_style` Options  
+
+
+| `atom_style`   | Description                                 |
+|----------------|---------------------------------------------|
+| `atomic`       | For simple atoms (metals, no charges/bonds) |
+| `charge`       | Adds charge for ionic systems               |
+| `molecular`    | Includes bonds, angles, dihedrals           |
+| `full`         | `molecular` + charge (e.g., biomolecules)   |
+| `sphere`       | Adds size and rotation (colloids)           |
+| `ellipsoid`    | Non-spherical particles                     |
+| `hybrid`       | Combine multiple styles                     |
+
+.key-takeaway[
+Use minimal styles like `atomic` for metals, and extended ones like `full` or `molecular` for complex molecules or charged species.
+]
+---
+
+## Common Potentials and Their Use Cases  
+
+
+| Potential       | `pair_style`     | Suitable For                  | Notes                                    |
+|------------------|------------------|-------------------------------|------------------------------------------|
+| Lennard-Jones    | `lj/cut`         | Noble gases, coarse-grained   | Simple 12-6 interaction                   |
+| EAM              | `eam`, `eam/alloy` | FCC/BCC metals (e.g., Cu, Fe) | Many-body; ideal for pure metals         |
+| Tersoff          | `tersoff`        | Covalent solids (Si, C)       | Bond-order; angular dependence           |
+| Stillinger-Weber | `sw`             | Semiconductors (Si, Ge)       | Three-body; angular term                 |
+| MEAM             | `meam`           | Alloys, metals                | Angular EAM; supports complex alloys     |
+| ReaxFF           | `reax/c`         | Reactive systems, combustion  | Break/form bonds; needs charge equil.    |
+| Morse            | `morse`          | Diatomic bonded atoms         | Smooth potential for simple molecules    |
+| Buckingham       | `buck`           | Ionic crystals, oxides        | Used with Coulombic terms                |
+
+.key-takeaway[
+Choose potentials that reflect bonding physics: EAM for metals, Tersoff for covalent systems, and ReaxFF for reactive systems.
+]
+
+## Example – LJ Melting 🔥
 ```lmp
 # in.lj_melt — LJ solid → liquid
 units           lj
@@ -93,7 +142,7 @@ timestep        0.005
 run             20000
 ```
 
-## 8 · Advanced Example: Lattice a(T) – V1→V4 📈
+## Advanced Example: Lattice a(T) – V1→V4 📈
 
 ### V1 – single-T NPT & print
 ```lmp
@@ -124,7 +173,7 @@ fix 2 all ave/time 100 10 1000 v_a file lat_vs_t.dat
 
 # Section 2.1 – Problem Statement & V1 Script
 
-## Slide — Fixed‑parameter script (`in.script_V1`)
+## Fixed‑parameter script (`in.script_V1`)
 
 ```lammps
 # in.script_V1 — lattice‑parameter at 300 K, 6×6×6 FCC Al cell
@@ -158,9 +207,9 @@ lmp -in in.script_V1
 
 ---
 
-# Section 2.2 – Introducing Variables
+# Introducing Variables
 
-## Slide — Script with variables (`in.script_V2`)
+## Script with variables (`in.script_V2`)
 
 ```lammps
 # --- user‑defined variables ---
@@ -200,9 +249,9 @@ lmp -var T 500 -var nx 8 -in in.script_V2
 
 ---
 
-# Section 2.3 – Loop over Temperature
+# Loop over Temperature
 
-## Slide — Temperature sweep (`in.script_V3`)
+## Temperature sweep (`in.script_V3`)
 
 ```lammps
 # temperature list
@@ -241,9 +290,9 @@ lmp -in in.script_V3
 
 ---
 
-# Section 2.4 – Self‑describing Filenames
+# Self‑describing Filenames
 
-## Slide — String variables (`in.script_V4`)
+## String variables (`in.script_V4`)
 
 ```lammps
 variable  Tlist index 300 400 500
@@ -269,9 +318,9 @@ File names now carry temperature and cell size (`dump_T300_N6.lammpstrj`).
 
 ---
 
-# Section 2.5 – Complete Sweep & CSV Output
+# Complete Sweep & CSV Output
 
-## Slide — Final script (`in.script_final`)
+## Final script (`in.script_final`)
 
 Key additions: loop over cell sizes and write lattice parameter to CSV.
 
@@ -322,7 +371,7 @@ lmp -in in.script_final
 
 ---
 
-# Section 2.6 – Recap & Preview
+# Recap & Preview
 
 - Variables and loops turn a rigid script into a reusable driver.  
 - Self‑describing filenames eliminate confusion during post‑processing.  
