@@ -1,6 +1,7 @@
 ---
 title: "Orientation-Dependent Homogeneous Dislocation Nucleation in HCP Zr"
 author: "Dr K V Mani Krishna"
+date: 2025-07-07
 format:
   revealjs:
     slide-number: true
@@ -19,6 +20,7 @@ format:
   - $\{10\bar{1}1\}_{\text{pyr}}\langle11\bar{2}3\rangle$ (pyramidal)
   - etc.
 - Loading direction strongly affects which slip systems activate.
+- Zr, Mg etc. are common HCP materials of Engg Importance where this is of importance.
 
 ---
 
@@ -47,6 +49,7 @@ format:
 
 
 ---
+
 ## Workflow Structure
 
 1. **Equilibration Phase**
@@ -58,9 +61,8 @@ format:
    - Load the equilibrated dumps
    - For each orientation:
      - Apply 3 loading directions × 2 senses = **6 deformation runs**
-     - Collect:
-       - Stress–strain data
-       - Dislocation statistics (via DXA or CNA)
+     - Collect: Stress–strain data
+     - Analyze Dislocation statistics (via DXA or CNA)
 
 ---
 
@@ -78,11 +80,6 @@ format:
 
 **Example Orientation considered**
 
-| Simulation box axis | Crystallographic direction |
-|---------------------|----------------------------|
-| **X**              |  $[11\bar{2}0]$ (a-axis) |
-| **Y**              |  $[10\bar{1}0]$          |
-| **Z**              |  $[0001]$ (c-axis)       |
 
 Each orientation is tested in **tension** and **compression**, capturing asymmetry due to c/a ratio.
 

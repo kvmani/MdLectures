@@ -7,6 +7,14 @@ slides/*.html
 slides/*.pdf
 slides/*.pptx
 
+docs/*.html
+docs/*.pdf
+docs/*.docx
+docs/*.md
+docs/*.epub
+docs/*.odt
+docs/*.tex
+
 */*_files/
 */*_files/**   # includes generated JS, CSS, assets
 

@@ -1,13 +1,14 @@
 ---
 title: "Molecular Dynamics with LAMMPS – Day 1"
-author: "KV Mani Krishna"
-date: 2025-07-02
+author: "K V Mani Krishna"
+date: 2025-07-05
 format:
   revealjs:
     slide-number: true
   beamer:
     includes-in-header: preamble.tex
   pptx: default
+
 ---
 
 
