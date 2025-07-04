@@ -1,0 +1,306 @@
+# ============================================================================
+# LAMMPS Input Script for NPT Equilibration of HCP Zirconium Single Crystals
+# Author      : K V Mani Krishna (2011)
+# Description : This script performs NPT equilibration of HCP Zr crystals 
+#               with varying orientations using user-defined direction vectors.
+#               - Converts crystallographic directions to Cartesian coordinates.
+#               - Verifies orthogonality and magnitudes of orientation vectors.
+#               - Constructs rotated simulation cell with appropriate lattice.
+#               - Applies EAM potential, equilibrates using Nose-Hoover thermostat/barostat.
+#               - Dumps final structure and outputs relevant observables.
+#               - Designed for use in looped execution for sweeping orientations.
+# ============================================================================
+# NOTE:
+# - Do NOT edit executable commands unless you intend to modify simulation logic.
+# - All loop variables are managed at the top of the script.
+
+# ---------------------- ORIENTATION VECTOR DEFINITIONS ----------------------
+variable vector1_1 index  0
+variable vector1_2 index  0
+variable vector1_3 index  0
+variable vector1_4 index  1
+
+variable vector2_1 index  1
+variable vector2_2 index  0
+variable vector2_3 index -1
+variable vector2_4 index  0
+
+variable vector3_1 index -1
+variable vector3_2 index  2
+variable vector3_3 index -1
+variable vector3_4 index  0
+
+# ============================== START OF LOOP ===============================
+label loopa
+variable a loop 1
+log log.Ori_${a}
+shell ./timestamps.sh
+print "Loop Number is ${a} and the first vector index is ${vector1_1}"
+
+clear
+
+# --------------------------- INITIALIZATION ---------------------------------
+units          metal
+dimension      3
+boundary       p p p
+atom_style     atomic
+
+# Simulation mode: 0 = production, 1 = debug
+variable MODE         equal 0
+
+# Void insertion toggle: 0 = no void, 1 = insert void
+variable VOID         equal 0
+
+# Aspect ratios for box shape
+variable AspectRatioX equal 1
+variable AspectRatioY equal 1
+variable AspectRatioZ equal 1
+
+# Material and simulation parameters
+variable LatticeParameter equal 3.23
+variable caratio          equal 1.59
+variable Temperature      equal 10
+variable Pressure         equal 0
+variable srate            equal 1.0e10
+variable PI               equal 3.1412
+
+# ---------------------- VOID SETTINGS (if enabled) --------------------------
+if "${VOID} == 1" then &
+  "variable myVoidRad equal 5" &
+  "variable myVoidX equal lx*0.5" &
+  "variable myVoidY equal ly*0.5" &
+  "variable myVoidZ equal lz*0.5" &
+else &
+  "variable myVoidRad equal 0" &
+  "variable myVoidX equal lx*0.5" &
+  "variable myVoidY equal ly*0.5" &
+  "variable myVoidZ equal lz*0.5"
+
+# -------------------- SIMULATION CONTROL PARAMETERS -------------------------
+if "${MODE} == 1" then &
+  "variable TimeStep equal 0.001" &
+  "variable No_of_equi_runs equal 10" &
+  "variable DUMP_FREQ_EQUI equal 20" &
+  "variable thermo equal 10" &
+  "variable MIN_CELL_SIZE_GLOBAL equal 100" &
+else &
+  "variable TimeStep equal 0.001" &
+  "variable No_of_equi_runs equal 50000" &
+  "variable DUMP_FREQ_EQUI equal 1000" &
+  "variable thermo equal 500" &
+  "variable MIN_CELL_SIZE_GLOBAL equal 500"
+
+# ------------------ CRYSTAL ORIENTATION INPUT -------------------------------
+# Tilt, Normal, Periodic directions in 4-index Miller-Bravais notation
+variable p1 equal ${vector1_1}
+variable p2 equal ${vector1_2}
+variable p3 equal ${vector1_3}
+variable p4 equal ${vector1_4}
+
+variable n1 equal ${vector2_1}
+variable n2 equal ${vector2_2}
+variable n3 equal ${vector2_3}
+variable n4 equal ${vector2_4}
+
+variable t1 equal ${vector3_1}
+variable t2 equal ${vector3_2}
+variable t3 equal ${vector3_3}
+variable t4 equal ${vector3_4}
+
+# ------------------------ FORCE FIELD SETTINGS ------------------------------
+variable minimumenergy equal -1.528662571
+variable pairstyle     index "eam/fs"
+variable paircoeff     index "* * Zr_1.eam.fs Zr Zr"
+
+# ------------------ CONVERSION TO CARTESIAN COORDINATES --------------------
+# Converts tilt, normal, periodic vectors from 4-index to 3D Cartesian basis
+variable f1 equal ${p1}-0.5*${p2}-0.5*${p3}
+variable f2 equal sqrt(3)/2*${p2}-sqrt(3)/2*${p3}
+variable f3 equal ${p4}*${caratio}
+
+variable g1 equal ${n1}-0.5*${n2}-0.5*${n3}
+variable g2 equal sqrt(3)/2*${n2}-sqrt(3)/2*${n3}
+variable g3 equal ${n4}*${caratio}
+
+variable h1 equal ${t1}-0.5*${t2}-0.5*${t3}
+variable h2 equal sqrt(3)/2*${t2}-sqrt(3)/2*${t3}
+variable h3 equal ${t4}*${caratio}
+
+print "CURRENT ORIENTATION: X = [${p1} ${p2} ${p3} ${p4}], Y = [${n1} ${n2} ${n3} ${n4}], Z = [${t1} ${t2} ${t3} ${t4}]"
+print "CARTESIAN VECTORS: X = [${f1} ${f2} ${f3}], Y = [${g1} ${g2} ${g3}], Z = [${h1} ${h2} ${h3}]"
+
+# ---------------------- VECTOR MAGNITUDE & ORTHOGONALITY --------------------
+variable vect_mag_X equal sqrt(${f1}*${f1}+${f2}*${f2}+${f3}*${f3})
+variable vect_mag_Y equal sqrt(${g1}*${g1}+${g2}*${g2}+${g3}*${g3})
+variable vect_mag_Z equal sqrt(${h1}*${h1}+${h2}*${h2}+${h3}*${h3})
+
+variable Angle_XY equal acos((${f1}*${g1}+${f2}*${g2}+${f3}*${g3})/(${vect_mag_X}*${vect_mag_Y}))*180/PI
+variable Angle_YZ equal acos((${h1}*${g1}+${h2}*${g2}+${h3}*${g3})/(${vect_mag_Z}*${vect_mag_Y}))*180/PI
+variable Angle_ZX equal acos((${f1}*${h1}+${f2}*${h2}+${f3}*${h3})/(${vect_mag_X}*${vect_mag_Z}))*180/PI
+
+print "Vector magnitudes: X = ${vect_mag_X}, Y = ${vect_mag_Y}, Z = ${vect_mag_Z}"
+print "Inter-vector angles (degrees): XY = ${Angle_XY}, YZ = ${Angle_YZ}, ZX = ${Angle_ZX}"
+
+# ------------------ LATTICE TRANSFORMATION COMPONENTS -----------------------
+# Used to define lattice in rotated coordinate system
+variable xlattice equal ${LatticeParameter}
+variable ylattice equal sqrt(3)
+variable zlattice equal ${caratio}
+
+variable fmag equal sqrt((${f1})^2+(${f2})^2+(${f3})^2)
+variable gmag equal sqrt((${g1})^2+(${g2})^2+(${g3})^2)
+variable hmag equal sqrt((${h1})^2+(${h2})^2+(${h3})^2)
+
+variable fx equal ${f1}/${fmag}
+variable gx equal ${f2}*${ylattice}/${fmag}
+variable hx equal ${f3}*${zlattice}/${fmag}
+
+variable fy equal ${g1}/${gmag}
+variable gy equal ${g2}*${ylattice}/${gmag}
+variable hy equal ${g3}*${zlattice}/${gmag}
+
+variable fz equal ${h1}/${hmag}
+variable gz equal ${h2}*${ylattice}/${hmag}
+variable hz equal ${h3}*${zlattice}/${hmag}
+
+# ----------------- SIMULATION BOX DIMENSIONS & LATTICE ---------------------
+# Determine the required minimum cell length to ensure periodicity
+# Adjust cell size to be at least MIN_CELL_SIZE_GLOBAL
+
+# ----------------- CONTINUED: BOX DIMENSIONS & RESCALING -------------------
+
+variable xlen equal ${xlattice}*sqrt((${f1})^2+(${f2})^2+(${f3})^2)
+variable ylen equal ${xlattice}*sqrt((${g1})^2+(${g2})^2+(${g3})^2)
+variable zlen equal ${xlattice}*sqrt((${h1})^2+(${h2})^2+(${h3})^2)
+
+# Determine largest of xlen, ylen, zlen to assign MIN_CELL_SIZE
+if "${xlen}>=${ylen}&&${xlen}>=${zlen}" then &
+  "variable MIN_CELL_SIZE equal ${xlen}"
+if "${ylen}>=${xlen}&&${ylen}>=${zlen}" then &
+  "variable MIN_CELL_SIZE equal ${ylen}"
+if "${zlen}>=${xlen}&&${zlen}>=${ylen}" then &
+  "variable MIN_CELL_SIZE equal ${zlen}"
+
+# Enforce minimum size constraint
+if "${MIN_CELL_SIZE_GLOBAL}>${MIN_CELL_SIZE}" then &
+  "variable MIN_CELL_SIZE equal ${MIN_CELL_SIZE_GLOBAL}"
+
+print "xlen = ${xlen} ylen = ${ylen} zlen = ${zlen} The maximum is ${MIN_CELL_SIZE}"
+
+# Determine scaling factor to ensure each direction exceeds MIN_CELL_SIZE
+if "${xlen} < ${MIN_CELL_SIZE}" then &
+  "variable X equal round(${MIN_CELL_SIZE}/${xlen})" &
+else &
+  "variable X equal 1"
+
+if "${ylen} < ${MIN_CELL_SIZE}" then &
+  "variable Y equal round(${MIN_CELL_SIZE}/${ylen})" &
+else &
+  "variable Y equal 1"
+
+if "${zlen} < ${MIN_CELL_SIZE}" then &
+  "variable Z equal round(${MIN_CELL_SIZE}/${zlen})" &
+else &
+  "variable Z equal 1"
+
+# Apply scale factors to lengths
+variable xlen equal $X*${xlen}
+variable ylen equal $Y*${ylen}
+variable zlen equal $Z*${zlen}
+
+print "Rescaled box dimensions: xlen = ${xlen}, ylen = ${ylen}, zlen = ${zlen}"
+
+# Define simulation region and create simulation box
+region     box block 0 ${xlen} 0 ${ylen} 0 ${zlen} units box
+create_box 1 box
+
+# Define custom lattice with rotated basis vectors
+lattice custom ${xlattice} &
+        a1 ${fx} ${fy} ${fz} &
+        a2 ${gx} ${gy} ${gz} &
+        a3 ${hx} ${hy} ${hz} &
+        basis 0.0 0.0 0.0 basis 0.5 0.5 0 basis 0.5 0.83333333 0.5 basis 0 0.33333333 0.5 &
+        orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+
+create_atoms 1 box
+
+# ---------------------------- FORCE FIELD -----------------------------------
+pair_style  eam/alloy
+pair_coeff  * * Zr.eam.fs Zr
+
+# ------------------------ COMPUTES & DUMPS (DEBUG) -------------------------
+compute csym_${a}     all centro/atom 12
+compute peratom_${a}  all pe/atom
+
+# Optional debug configuration
+if "${MODE} == 1" then &
+  "dump 1 all custom ${a} ${a}_just.before.eqi id type x y z" &
+  "run 1" &
+  "undump 1"
+
+# ---------------------- EQUILIBRATION SECTION ------------------------------
+reset_timestep       0
+timestep             ${TimeStep}
+
+# Create initial velocities and apply NPT ensemble
+velocity all create ${Temperature} 251 mom yes rot no
+fix 1 all npt temp ${Temperature} ${Temperature} 1 iso ${Pressure} ${Pressure} 1 drag 1
+
+# Output thermo data
+thermo ${thermo}
+thermo_style custom step lx ly lz press pxx pyy pzz pe temp
+
+# Compute RDF (radial distribution function)
+compute rdf_${a} all rdf 10000 1 1
+fix 20 all ave/time 1 ${No_of_equi_runs} ${No_of_equi_runs} c_rdf_${a} file tmp.rdf_${MIN_CELL_SIZE_GLOBAL} mode vector
+
+# Run simulation for equilibration (production run)
+run ${No_of_equi_runs}
+
+# Unfix simulation components
+unfix 1
+unfix 20
+
+# -------------------- STORE FINAL DIMENSIONS -------------------------------
+# Save box dimensions for future strain/stress analysis
+variable tmp equal "lx"
+variable L0X equal ${tmp}
+variable tmp equal "ly"
+variable L0Y equal ${tmp}
+variable tmp equal "lz"
+variable L0Z equal ${tmp}
+
+print "Initial Lengths after equilibration: L0X = ${L0X}, L0Y = ${L0Y}, L0Z = ${L0Z}"
+
+# ------------------------ FINAL DUMP OF STRUCTURE --------------------------
+dump 1 all custom 1__${a} ${a}_dump_equlibrium_${MIN_CELL_SIZE_GLOBAL} id type x y z
+run 1
+undump 1
+
+# -------------------------- LOOP INDEX UPDATE ------------------------------
+print "End of loop number ${a}, vector1 = ${vector1_1}"
+
+next vector1_1
+next vector1_2
+next vector1_3
+next vector1_4
+
+next vector2_1
+next vector2_2
+next vector2_3
+next vector2_4
+
+next vector3_1
+next vector3_2
+next vector3_3
+next vector3_4
+
+next a
+
+# Loop control - jump back to start of loop
+jump in.equilibration loopa
+
+# ============================================================================
+# END OF SCRIPT: All orientations processed and simulation complete
+# ============================================================================
+

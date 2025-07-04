@@ -1,0 +1,120 @@
+## ============================================================================
+## LAMMPS Input Script: Uniaxial Deformation (Tensile + Compression) of HCP Zr
+## Author       : K V Mani Krishna
+## Description  : This script applies uniaxial tensile and compressive loading
+##                along X, Y, and Z directions for a set of pre-equilibrated 
+##                single crystal Zr samples. Each input corresponds to a different
+##                orientation (data file). The deformation is controlled via
+##                fix deform and monitored using computed strain/stress values.
+## ============================================================================
+
+variable start_file_number equal 1
+
+# ----------------------------- Begin Loop over data files -----------------------------
+label loopb
+variable b index 1 2 3 4 5 6 7 10 11 12 13 14 16 17 18 19 20 21 22 23 24 25 26 27
+variable c equal ${b}+${start_file_number}-1
+
+shell mkdir Ori_${c}
+shell cp ${c}_dump_equlibrium.data Ori_${c}/
+shell cp log.Ori_${c} Ori_${c}/
+
+shell mkdir tensile_${c}
+shell mkdir compression_${c}
+
+print "Present working directory is Ori_${c}"
+
+# -------------------------- Loop over deformation directions --------------------------
+label loopd
+variable d loop 3
+variable a equal ${d}    ## deformation direction index (1=X, 2=Y, 3=Z)
+
+clear
+echo both
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+
+# --------------------------- Simulation Modes & Parameters ----------------------------
+variable MODE equal 0                     ## 0 = regular, 1 = debug
+variable OPERATION_MODE equal 2          ## 1 = tensile only, 2 = both tension & compression
+
+variable LatticeParameter equal 3.23
+variable caratio equal 1.59
+variable Temperature equal 10
+variable Pressure equal 0
+variable srate_global equal 1.0e10
+variable CNA_CUTOFF equal 3.8
+variable ELEMENT_NAME string Zr
+
+# Mode-specific runtime settings
+if "${MODE} == 1" then &
+  "variable TimeStep equal 0.001" &
+  "variable TOTAL_RUNS equal 50" &
+  "variable TOTAL_RUNS_TENSILE equal 10" &
+  "variable TOTAL_RUNS_COMPRESSION equal 60" &
+  "variable DUMPS_FREQ_RUN equal 10" &
+  "variable NO_OF_EQUILIBRATION_RUNS equal 0" &
+  "variable thermo equal 10" &
+else &
+  "variable TimeStep equal 0.001" &
+  "variable TOTAL_RUNS equal 15000" &
+  "variable TOTAL_RUNS_TENSILE equal 1000" &
+  "variable TOTAL_RUNS_COMPRESSION equal 15000" &
+  "variable DUMPS_FREQ_RUN equal 500" &
+  "variable NO_OF_EQUILIBRATION_RUNS equal 0" &
+  "variable thermo equal 500"
+
+# ---------------------------- Simulation Parameters ------------------------------------
+variable pairstyle index "eam/fs"
+variable paircoeff index "* * Zr.eam.fs Zr Zr"
+
+variable etol equal 1.0e-25
+variable ftol equal 1.0e-25
+variable maxiter equal 10000
+variable maxeval equal 100000
+variable overlapboth equal 2
+variable counter equal 0
+
+# ------------------------- Read Input Data File ----------------------------------------
+read_data ${c}_dir_dump_equi.data
+
+# ------------------------- Force Fields ------------------------------------------------
+pair_style eam/alloy
+pair_coeff * * /home/lus03/kvmani/MolecularDynamics/Zr_mm.eam.fs Zr
+
+# ------------------------- Neighbor Settings -------------------------------------------
+neighbor 2.0 bin
+neigh_modify every 1 check yes page 100000
+
+variable DEFORM_DIR equal ${a}
+print "Now running DEFORMATION DIR = ${a}"
+
+# ------------------------- Store Initial Dimensions -------------------------------------
+variable tmp equal "lx"
+variable L0X equal ${tmp}
+variable tmp equal "ly"
+variable L0Y equal ${tmp}
+variable tmp equal "lz"
+variable L0Z equal ${tmp}
+variable VOLUME equal ${L0X}*${L0Y}*${L0Z}
+print "Initial Lengths: L0X=${L0X}, L0Y=${L0Y}, L0Z=${L0Z}, VOLUME=${VOLUME}"
+
+# ---------------------- Optional Debug Dump --------------------------------------------
+if "${MODE} == 1" then &
+  "dump 1 all custom 1 ${c}_${a}_just.before.run id type xs ys zs" &
+  "run 1" &
+  "undump 1"
+
+# ---------------------- CNA (Common Neighbor Analysis) ----------------------------------
+compute cna_${a} all cna/atom ${CNA_CUTOFF}
+
+# ------------------------ Loop over Tension/Compression -------------------------------
+label loop_f
+variable f loop ${OPERATION_MODE}
+
+# Select run mode
+if "${f} == 1" then &
+  "shell mkdir tensile_${c}" &
+  "variable TOTAL_RUNS e_
