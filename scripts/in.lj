@@ -1,21 +1,30 @@
-# in.lj -- Lennard-Jones melt demo
-# Purpose: Basic LJ melt simulation to demonstrate LAMMPS workflow
-# Steps:
-#   - define LJ units and atomic style
-#   - create FCC lattice and simulation box
-#   - assign LJ potential parameters
-#   - integrate using NVE ensemble for 10000 steps
-# Expected output:
-#   - thermo log of temperature, pressure, energy
-#   - dump file visualizable in Ovito
+# 3d Lennard-Jones melt
 
-units lj
-atom_style atomic
-lattice fcc 0.8442
-region box block 0 10 0 10 0 10
-create_box 1 box
+units       lj
+atom_style  atomic
+
+lattice     fcc 0.8442
+region      box block 0 10 0 10 0 10
+create_box  1 box
 create_atoms 1 box
-pair_style lj/cut 2.5
-pair_coeff 1 1 1.0 1.0 2.5
-fix 1 all nve
-run 10000
+mass        1 1.0
+
+velocity    all create 3.0 87287 loop geom
+
+pair_style  lj/cut 2.5
+pair_coeff  1 1 1.0 1.0 2.5
+
+neighbor    0.3 bin
+neigh_modify every 20 delay 0 check no
+
+fix         1 all nve
+
+# Optional dumps (commented out):
+dump     id all atom 50 dump.melt
+# dump     2 all image 25 image.*.jpg type type axes yes 0.8 0.02 view 60 -30
+# dump_modify 2 pad 3
+# dump     3 all movie 25 movie.mpg type type axes yes 0.8 0.02 view 60 -30
+# dump_modify 3 pad 3
+
+thermo      50
+run         250
