@@ -7,9 +7,9 @@ format:
     theme: solarized
     slide-number: true
     self-contained: true
-    monofont: "Liberation Mono"
+    monofont: "Consolas"
   beamer:
     includes-in-header: preamble.tex
-    monofont: "Liberation Mono"
+    monofont: "Consolas"
   pptx:
-    monofont: "Liberation Mono"
+    monofont: "Consolas"
